@@ -34,7 +34,9 @@ const SPREADSHEET_ID = "1QmU1fIty8r9xee26Yj1iSd5s1gCJd_NcxzcbQWt3L1g";
 const SHEET_NAME = "ANTRIAN";
 const API_KEY = "AIzaSyAeBnLR5BMA-WPEz4rLtGFVAs4bpdWz81s";
 
-// Resolusi API Key dengan mengecek dari Environment Variable (.env) atau input state
+// Resolusi Parameter dengan mengecek dari Environment Variable (.env / Vercel Env) atau default value
+const RESOLVED_SPREADSHEET_ID = (import.meta as any).env?.VITE_SPREADSHEET_ID || SPREADSHEET_ID;
+const RESOLVED_SHEET_NAME = (import.meta as any).env?.VITE_SHEET_NAME || SHEET_NAME;
 const RESOLVED_API_KEY = (import.meta as any).env?.VITE_GOOGLE_SHEETS_API_KEY || API_KEY;
 
 // Interface Antrian
@@ -283,10 +285,10 @@ export default function App() {
 
   // State Parameter Koneksi (Bisa disesuaikan oleh user via UI, beralih antara database fallback dan Google Sheets)
   const [customSpreadsheetId, setCustomSpreadsheetId] = useState<string>(() => {
-    return localStorage.getItem("VITE_SPREADSHEET_ID") || SPREADSHEET_ID;
+    return localStorage.getItem("VITE_SPREADSHEET_ID") || RESOLVED_SPREADSHEET_ID;
   });
   const [customSheetName, setCustomSheetName] = useState<string>(() => {
-    return localStorage.getItem("VITE_SHEET_NAME") || SHEET_NAME;
+    return localStorage.getItem("VITE_SHEET_NAME") || RESOLVED_SHEET_NAME;
   });
   const [customApiKey, setCustomApiKey] = useState<string>(() => {
     const saved = localStorage.getItem("VITE_GOOGLE_SHEETS_API_KEY");
@@ -725,9 +727,14 @@ export default function App() {
       {/* HEADER UTAMA APLIKASI */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-[#534AB7] p-2.5 rounded-xl text-white shadow-md">
-              <Building2 className="w-5 h-5 animate-pulse" />
+          <div className="flex items-center gap-3.5">
+            <div className="bg-white p-1 rounded-xl shadow-xs border border-slate-100/80 flex items-center justify-center shrink-0">
+              <img 
+                src="https://res.cloudinary.com/maswardi/image/upload/v1772681855/magetan_u0plbg.png" 
+                alt="Logo Magetan" 
+                className="w-10 h-11 object-contain" 
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div>
               <h1 className="text-lg md:text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
@@ -930,9 +937,9 @@ export default function App() {
                     <span>💡 <i>Sistem menyimpan kustomisasi nama operator secara langsung di browser lokal Anda.</i></span>
                     <button
                       onClick={() => {
-                        setCustomSpreadsheetId(SPREADSHEET_ID);
-                        setCustomSheetName(SHEET_NAME);
-                        setCustomApiKey(API_KEY);
+                        setCustomSpreadsheetId(RESOLVED_SPREADSHEET_ID);
+                        setCustomSheetName(RESOLVED_SHEET_NAME);
+                        setCustomApiKey(RESOLVED_API_KEY);
                         const defaultOps = [
                           "Operator 1 (Pendaftaran)",
                           "Operator 2 (Sertifikasi)",
@@ -1362,8 +1369,13 @@ export default function App() {
               {/* DISPLAY HEADER */}
               <div className="bg-slate-950 px-6 py-5 border-b border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
                 <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 bg-[#534AB7] rounded-xl flex items-center justify-center shadow-lg border border-indigo-400/20">
-                    <Building2 className="w-6 h-6 text-white" />
+                  <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-lg border border-indigo-100/10 p-1.5 shrink-0">
+                    <img 
+                      src="https://res.cloudinary.com/maswardi/image/upload/v1772681855/magetan_u0plbg.png" 
+                      alt="Logo Magetan" 
+                      className="w-11 h-12 object-contain" 
+                      referrerPolicy="no-referrer"
+                    />
                   </div>
                   <div>
                     <h2 className="text-lg md:text-xl font-black tracking-wide text-white uppercase">{instansiName}</h2>
