@@ -1,0 +1,6 @@
+{
+  "name": "Pemanggil Antrian",
+  "description": "Aplikasi Pemanggil Antrian Kantor Pemerintahan dengan Fitur Upload Spreadsheet dan Text-to-Speech Bahasa Indonesia.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
