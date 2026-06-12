@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { read, utils } from "xlsx";
 import {
   Volume2,
   Tv,
@@ -92,7 +93,7 @@ const extractProjectNumber = (text: string | null): string | null => {
 };
 
 // Render kartu info pemecahan masalah koneksi yang interaktif & informatif
-const renderConnectionErrorCard = (errorText: string | null) => {
+const renderConnectionErrorCard = (errorText: string | null, onSwitchOffline?: () => void) => {
   if (!errorText) return null;
 
   const lower = errorText.toLowerCase();
@@ -114,77 +115,81 @@ const renderConnectionErrorCard = (errorText: string | null) => {
     : `https://console.cloud.google.com/apis/credentials`;
 
   return (
-    <div className="mt-4 p-4 md:p-5 bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl flex flex-col gap-4 text-xs shadow-xl animate-fadeIn">
-      <div className="flex items-start gap-3">
-        <div className="p-2 bg-rose-500/15 rounded-xl text-rose-400 shrink-0">
+    <div className="mt-4 p-5 bg-gradient-to-br from-rose-50/60 to-white border border-rose-100 text-slate-800 rounded-2xl flex flex-col gap-4 text-xs shadow-xs animate-fadeIn">
+      <div className="flex items-start gap-3.5">
+        <div className="p-2.5 bg-rose-500/10 rounded-xl text-rose-600 shrink-0 shadow-xs">
           <AlertCircle className="w-5 h-5" />
         </div>
         <div className="space-y-1">
-          <h4 className="font-extrabold text-slate-100 text-sm tracking-tight uppercase">
-            {isBlocked && "🔒 AKSES API KEY DIBLOKIR / DIBATASI (API RESTRICTIONS)"}
+          <h4 className="font-black text-rose-800 text-sm tracking-tight uppercase flex items-center gap-1.5">
+            {isBlocked && "🔒 AKSES API KEY DIBLOKIR / DIBATASI (API KEY RESTRICTIONS)"}
             {isDisabled && "⚠️ GOOGLE SHEETS API BELUM AKTIF"}
             {isInvalidKey && !isBlocked && !isDisabled && "❌ API KEY ATAU HAK AKSES BERMASALAH"}
-            {!isBlocked && !isDisabled && !isInvalidKey && "📡 MASALAH SINKRONISASI DATABASES / SPREADSHEET"}
+            {!isBlocked && !isDisabled && !isInvalidKey && "📡 HUBUNGAN SINKRONISASI CLOUD TERHAMBAT"}
           </h4>
-          <p className="text-slate-400 text-[11.5px] leading-relaxed">
+          <p className="text-slate-600 text-[11.5px] leading-relaxed font-medium">
             {errorText}
           </p>
         </div>
       </div>
 
       {/* DETAILED DIAGNOSTICS & RESOLUTION */}
-      <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-3.5 text-slate-300">
+      <div className="bg-white/80 border border-slate-100 rounded-xl p-4 space-y-4 text-slate-700 shadow-xs">
         {isBlocked && (
-          <div className="space-y-2">
-            <span className="inline-flex items-center gap-1 bg-amber-500/15 text-amber-300 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider">
-              Penyebab & Solusi Mandiri:
+          <div className="space-y-3">
+            <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
+              Diagnosis & Solusi Cepat:
             </span>
-            <p className="text-[11.5px] leading-relaxed text-slate-300">
-              API pembatasan (API Restrictions) pada kunci Google Cloud Anda sedang aktif, namun Anda <strong>belum memberikan centang/izin untuk layanan &quot;Google Sheets API&quot;</strong>.
+            <p className="text-[12px] leading-relaxed text-slate-600">
+              Pengaturan <strong>API Restrictions (Pembatasan Kunci)</strong> aktif di Google Cloud Console Anda, namun Anda <strong>belum memberikan centang/izin untuk layanan &quot;Google Sheets API&quot;</strong>.
             </p>
-            <div className="mt-2 text-[11px] bg-slate-900/50 p-2.5 rounded-lg border border-slate-800 text-slate-400 space-y-1">
-              <p className="font-bold text-slate-200">Cara Mematikan Pembatasan atau Memberi Izin:</p>
-              <p>1. Buka halaman pengaturan API Key Anda di Google Cloud Console.</p>
-              <p>2. Cari bagian <strong>&quot;API restrictions&quot; (Pembatasan API)</strong> di bagian bawah halaman.</p>
-              <p>3. Ubah pilihan ke <strong>&quot;Don't restrict key&quot; (Jangan batasi kunci)</strong> untuk menghapus pembatasan sepenuhnya, ATAU jika ingin tetap membatasi, pilih opsi edit lalu pastikan Anda memberi centang pada <strong>&quot;Google Sheets API&quot;</strong>.</p>
-              <p>4. Klik <strong>Save / Simpan</strong>, tunggu 30 detik, lalu klik tombol sinkronisasi lagi di sini.</p>
+            <div className="text-[11.5px] bg-slate-50 p-3.5 rounded-xl border border-slate-150 text-slate-600 space-y-2">
+              <p className="font-extrabold text-slate-800 uppercase tracking-wide text-[10.5px]">Langkah mengizinkan Google Sheets API:</p>
+              <div className="space-y-1 text-slate-600">
+                <p>1. Buka halaman konfigurasi API Key Anda di Google Cloud Console.</p>
+                <p>2. Cari panel <strong>&quot;API restrictions&quot; (Pembatasan API)</strong> di bagian bawah.</p>
+                <p>3. Ubah pilihan sementara ke <strong>&quot;Don't restrict key&quot; (Jangan batasi kunci)</strong> agar kunci bisa diakses umum, ATAU klik edit dan bubuhkan centang pada kotak <strong>&quot;Google Sheets API&quot;</strong>.</p>
+                <p>4. Klik <strong>Save / Simpan</strong>, tunggu sekitar 30 detik, lalu segarkan kembali aplikasi ini.</p>
+              </div>
             </div>
-            <div className="pt-1.5 flex flex-wrap gap-2">
+            <div className="pt-1">
               <a
                 href={credentialsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider transition shadow cursor-pointer"
+                className="inline-flex items-center gap-2 bg-[#534AB7] hover:bg-[#433b9b] text-white font-bold px-4 py-2.5 rounded-xl text-[10.5px] uppercase tracking-wider transition shadow cursor-pointer active:scale-95"
               >
-                ⚙️ Atur API Key Restrictions di Cloud Console
+                <Settings className="w-3.5 h-3.5" /> Atur API Key Restrictions di Cloud Console
               </a>
             </div>
           </div>
         )}
 
         {isDisabled && (
-          <div className="space-y-2">
-            <span className="inline-flex items-center gap-1 bg-amber-500/15 text-amber-300 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider">
-              Penyebab & Solusi Mandiri:
+          <div className="space-y-3">
+            <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
+              Penyebab Utama:
             </span>
-            <p className="text-[11.5px] leading-relaxed text-slate-300">
+            <p className="text-[12px] leading-relaxed text-slate-600">
               Layanan library <strong>&quot;Google Sheets API&quot;</strong> belum diaktifkan di dalam proyek Google Cloud Console Anda, sehingga API Key ditolak oleh Google.
             </p>
-            <div className="mt-2 text-[11px] bg-slate-900/50 p-2.5 rounded-lg border border-slate-800 text-slate-400 space-y-1">
-              <p className="font-bold text-slate-200">Cara Mengaktifkan Google Sheets API:</p>
-              <p>1. Klik tombol jalankan aktivasi cepat berwarna biru di bawah ini.</p>
-              <p>2. Begitu halaman Google Cloud Console terbuka, klik tombol biru besar bertuliskan <strong>&quot;ENABLE&quot; (Aktifkan)</strong>.</p>
-              <p>3. Tunggu proses aktivasi sekitar 1 menit di console Google.</p>
-              <p>4. Kembali ke halaman Web Antrian ini lalu klik tombol <strong>&quot;Segarkan Data&quot;</strong>.</p>
+            <div className="text-[11.5px] bg-slate-50 p-3.5 rounded-xl border border-slate-155 text-slate-600 space-y-2">
+              <p className="font-extrabold text-slate-800 uppercase tracking-wide text-[10.5px]">Cara Mengaktifkan Google Sheets API:</p>
+              <div className="space-y-1 text-slate-600">
+                <p>1. Klik tombol jalankan aktivasi cepat berwarna biru di bawah ini.</p>
+                <p>2. Begitu halaman Google Cloud Console terbuka, klik tombol biru besar bertuliskan <strong>&quot;ENABLE&quot; (Aktifkan)</strong>.</p>
+                <p>3. Tunggu proses aktivasi sekitar 1 menit di console Google.</p>
+                <p>4. Kembali ke halaman Web Antrian ini lalu klik tombol <strong>&quot;Segarkan Data&quot;</strong>.</p>
+              </div>
             </div>
-            <div className="pt-1.5 flex flex-wrap gap-2">
+            <div className="pt-1">
               <a
                 href={consoleUrl || googleSheetsEnableUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-black px-3.5 py-2.5 rounded-lg text-[11px] uppercase tracking-widest transition shadow animate-bounce cursor-pointer"
+                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-4.5 py-3 rounded-xl text-[11px] uppercase tracking-wider transition shadow-md hover:shadow-lg active:scale-95"
               >
-                👉 AKTIFKAN GOOGLE SHEETS API (1-KLIK)
+                <Wifi className="w-4 h-4" /> AKTIFKAN GOOGLE SHEETS API (1-KLIK)
               </a>
             </div>
           </div>
@@ -192,64 +197,64 @@ const renderConnectionErrorCard = (errorText: string | null) => {
 
         {isInvalidKey && !isBlocked && !isDisabled && (
           <div className="space-y-4 text-left">
-            <span className="inline-flex items-center gap-1 bg-rose-500/15 text-rose-300 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 bg-rose-100 text-rose-800 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
               CARA MEMPEROLEH API KEY (VITE_GOOGLE_SHEETS_API_KEY):
             </span>
-            <p className="text-slate-300 text-[11.5px] leading-relaxed">
+            <p className="text-slate-600 text-[11.5px] leading-relaxed">
               API Key Google Sheets diperoleh gratis melalui <strong>Google Cloud Console</strong>. Ikuti langkah mudah berikut ini untuk membuat kunci API Anda sendiri:
             </p>
-            <div className="mt-2 text-[11.5px] bg-[#070b13] p-4.5 rounded-xl border border-slate-800 text-slate-300 space-y-3.5 leading-relaxed">
-              <p className="font-extrabold text-[#9A91FB] flex items-center gap-1.5 border-b border-slate-900 pb-1.5 uppercase tracking-wide">
-                <span>📋</span> Langkah Demi Langkah Membuat API Key:
+            <div className="text-[11.5px] bg-slate-50/50 p-4.5 rounded-xl border border-slate-150 text-slate-700 space-y-4 leading-relaxed">
+              <p className="font-extrabold text-[#534AB7] flex items-center gap-1.5 border-b border-slate-200/80 pb-2 uppercase tracking-wider text-[11px]">
+                <span>📋</span> Panduan Pembuatan API Key Mandiri:
               </p>
               
-              <div className="flex gap-2.5">
-                <span className="bg-[#534AB7] text-white font-black w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</span>
+              <div className="flex gap-3">
+                <span className="bg-[#534AB7]/10 text-[#534AB7] font-black w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10.5px] shrink-0 mt-0.5">1</span>
                 <div>
-                  <p className="font-bold text-white">Buka Google Cloud Console</p>
-                  <p className="text-slate-400 text-[11px]">Kunjungi tautan resmi <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">console.cloud.google.com</a> dan masuk menggunakan akun Google/Gmail Anda.</p>
+                  <p className="font-bold text-slate-900">Buka Google Cloud Console</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">Kunjungi tautan resmi <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 font-bold hover:underline">console.cloud.google.com</a> dan masuk menggunakan akun Google Anda.</p>
                 </div>
               </div>
 
-              <div className="flex gap-2.5">
-                <span className="bg-[#534AB7] text-white font-black w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
+              <div className="flex gap-3">
+                <span className="bg-[#534AB7]/10 text-[#534AB7] font-black w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10.5px] shrink-0 mt-0.5">2</span>
                 <div>
-                  <p className="font-bold text-white">Buat Proyek Baru (Jika Belum Ada)</p>
-                  <p className="text-slate-400 text-[11px]">Klik menu dropdown di bagian atas layar (sebelah logo Google Cloud), lalu klik <strong>&quot;NEW PROJECT&quot;</strong> (Proyek Baru) dan berikan nama bebas (contoh: <code>antrian-desa</code>).</p>
+                  <p className="font-bold text-slate-900">Buat Proyek Baru</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">Klik dropdown proyek di baris paling atas, pilih <strong>&quot;NEW PROJECT&quot;</strong>, isi nama bebas (misal: <code>antrian-desa-poncol</code>).</p>
                 </div>
               </div>
 
-              <div className="flex gap-2.5">
-                <span className="bg-[#534AB7] text-white font-black w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
+              <div className="flex gap-3">
+                <span className="bg-[#534AB7]/10 text-[#534AB7] font-black w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10.5px] shrink-0 mt-0.5">3</span>
                 <div>
-                  <p className="font-bold text-white">Aktifkan Google Sheets API</p>
-                  <p className="text-slate-400 text-[11px]">Pada kotak pencarian di bagian paling atas halaman Google Cloud, cari kata kunci <strong>&quot;Google Sheets API&quot;</strong>. Klik layanan tersebut, lalu klik tombol biru besar bertuliskan <strong>&quot;ENABLE&quot;</strong> (Aktifkan).</p>
+                  <p className="font-bold text-slate-900">Aktifkan Google Sheets API</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">Pada bilah pencarian paling atas layar, ketik <strong>&quot;Google Sheets API&quot;</strong>, lalu klik tombol biru <strong>&quot;ENABLE&quot;</strong>.</p>
                 </div>
               </div>
 
-              <div className="flex gap-2.5">
-                <span className="bg-[#534AB7] text-white font-black w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5">4</span>
+              <div className="flex gap-3">
+                <span className="bg-[#534AB7]/10 text-[#534AB7] font-black w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10.5px] shrink-0 mt-0.5">4</span>
                 <div>
-                  <p className="font-bold text-white">Buat API Key</p>
-                  <p className="text-slate-400 text-[11px]">Buka menu navigasi kiri <strong>&quot;APIs & Services&quot; &gt; &quot;Credentials&quot;</strong>. Klik tombol <strong>&quot;+ CREATE CREDENTIALS&quot;</strong> di atas, lalu pilih opsi <strong>&quot;API Key&quot;</strong>. Google akan langsung menampilkan kunci panjang Anda (contoh: <code>AIzaSy...</code>).</p>
+                  <p className="font-bold text-slate-900">Buat Kunci API (API Key)</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">Klik menu kiri <strong>&quot;APIs & Services&quot; &gt; &quot;Credentials&quot;</strong>. Di atas, ketuk <strong>&quot;+ CREATE CREDENTIALS&quot; &gt; &quot;API Key&quot;</strong>. Salin kode API Key yang muncul.</p>
                 </div>
               </div>
 
-              <div className="flex gap-2.5">
-                <span className="bg-[#534AB7] text-white font-black w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5">5</span>
+              <div className="flex gap-3">
+                <span className="bg-[#534AB7]/10 text-[#534AB7] font-black w-5.5 h-5.5 rounded-full flex items-center justify-center text-[10.5px] shrink-0 mt-0.5">5</span>
                 <div>
-                  <p className="font-bold text-white">Bagikan Spreadsheet Anda</p>
-                  <p className="text-slate-400 text-[11px]">Buka Google Spreadsheet antrian Anda, klik <span className="bg-blue-600 px-1.5 py-0.5 rounded text-[10px] text-white font-bold">Bagikan / Share</span> di pojok kanan atas, lalu ubah status Akses Umum menjadi <strong>&quot;Anyone with the link can view&quot;</strong> (Siapa saja yang memiliki link dapat melihat).</p>
+                  <p className="font-bold text-slate-900">Bagikan Akses Google Spreadsheet</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">Buka file spreadsheet Anda, klik tombol biru <strong>&quot;Bagikan&quot; (Share)</strong>, lalu pada bagian Akses Umum silakan pilih <strong>&quot;Siapa saja yang memiliki link dapat melihat&quot; (Anyone with the link can view)</strong>.</p>
                 </div>
               </div>
             </div>
             
-            <div className="pt-1.5 flex flex-wrap gap-2">
+            <div className="pt-1 flex flex-wrap gap-2">
               <a
                 href={credentialsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black px-4 py-2.5 rounded-xl text-[10.5px] uppercase tracking-wider transition shadow-md hover:scale-[1.01] cursor-pointer"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold px-4.5 py-2.5 rounded-xl text-[10.5px] uppercase tracking-wider transition shadow-sm active:scale-95"
               >
                 🚀 Buka Cloud Console untuk Membuat Kunci API Sekarang
               </a>
@@ -258,21 +263,35 @@ const renderConnectionErrorCard = (errorText: string | null) => {
         )}
 
         {!isBlocked && !isDisabled && !isInvalidKey && (
-          <div className="space-y-2">
-            <p className="text-slate-300 text-[11.5px]">
-              Silakan periksa apakah file Google Spreadsheet Anda sudah di-set hak aksesnya ke <strong>&quot;Siapa saja yang memiliki link dapat melihat&quot; (Anyone with link can view)</strong>. Jika hak aksesnya masih &quot;Dibatasi&quot; (Restricted), REST API Key tidak dapat membaca data Anda.
+          <div className="space-y-3">
+            <p className="text-slate-600 text-[11.5px] leading-relaxed">
+              Akses file Google Spreadsheet Anda belum dibuka untuk umum. Pastikan pengaturannya diset ke <strong>&quot;Siapa saja yang memiliki link dapat melihat&quot; (Anyone with the link can view)</strong> agar dibaca sistem.
             </p>
-            <div className="text-[11px] bg-slate-900/50 p-2.5 rounded-lg border border-slate-800 text-slate-400 space-y-1">
-              <p className="font-bold text-slate-200">Cara Mengubah Hak Akses Spreadsheet:</p>
-              <p>1. Buka file Google Spreadsheet antrian Anda.</p>
-              <p>2. Klik tombol biru <strong>&quot;Bagikan&quot; (Share)</strong> di pojok kanan atas.</p>
-              <p>3. Pada bagian &quot;Akses umum&quot; (General access), ubah status dari <strong>&quot;Dibatasi&quot; (Restricted)</strong> menjadi <strong>&quot;Siapa saja yang memiliki link&quot; (Anyone with the link)</strong>.</p>
-              <p>4. Set perannya sebagai <strong>&quot;Pelihat&quot; (Viewer)</strong> agar data tetap aman.</p>
-              <p>5. Klik <strong>Selesai</strong> dan coba segarkan kembali halaman Web Antrian ini.</p>
+            <div className="text-[11.5px] bg-slate-50 p-3.5 rounded-xl border border-slate-150 text-slate-600 space-y-1.5">
+              <p className="font-extrabold text-slate-800 uppercase tracking-wide text-[10.5px]">Langkah mengubah hak akses spreadsheet:</p>
+              <p>1. Buka spreadsheet antrian Anda di Google Sheets.</p>
+              <p>2. Klik tombol biru <strong>&quot;Bagikan&quot; (Share)</strong> di sudut kanan atas.</p>
+              <p>3. Di menu &quot;Akses umum&quot; (General access), ubah pilihan dari <strong>&quot;Dibatasi&quot; (Restricted)</strong> ke <strong>&quot;Siapa saja yang memiliki link&quot; (Anyone with the link)</strong>.</p>
+              <p>4. Biarkan peran atau hak akses tetap sebagai <strong>&quot;Pelihat&quot; (Viewer)</strong> demi aspek keamanan.</p>
+              <p>5. Klik <strong>Selesai</strong> dan jalankan kembali proses sinkronisasi.</p>
             </div>
           </div>
         )}
       </div>
+
+      {/* TOMBOL PENGALIHAN OFFLINE CEPAT */}
+      {onSwitchOffline && (
+        <div className="mt-1 pt-3.5 border-t border-slate-200/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11.5px] text-slate-500">
+          <span className="font-medium">💡 Mengalami kendala koneksi Sheets API? Lewati kesalahan ini dengan mengaktifkan Mode Offline lokal.</span>
+          <button
+            onClick={onSwitchOffline}
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-4 py-2.5 rounded-xl text-[10px] uppercase tracking-wider transition cursor-pointer shadow-sm active:scale-95 flex items-center justify-center gap-2 shrink-0"
+          >
+            <Database className="w-4 h-4" />
+            Aktifkan Database Offline Lokal
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -296,11 +315,28 @@ export default function App() {
   });
 
   // State Data & Sinkronisasi
-  const [queueList, setQueueList] = useState<QueueItem[]>(FALLBACK_DATA);
+  const dbMode = "sheets"; // Permanen Google Sheets murni untuk kestabilan data tunggal
+
+  const [queueList, setQueueList] = useState<QueueItem[]>(() => {
+    const savedLocal = localStorage.getItem("LOCAL_QUEUE_DATA");
+    if (savedLocal) {
+      try {
+        const parsed = JSON.parse(savedLocal);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return FALLBACK_DATA;
+  });
+
   const [historyList, setHistoryList] = useState<CallHistoryItem[]>([
     { no_antrian: "A040", nama: "Bambang Pamungkas", loket: "Loket 2", time: "09:12" },
     { no_antrian: "B011", nama: "Rina Wijayanti", loket: "Loket 1", time: "09:05" }
   ]);
+
+  // Persist queueList ke localStorage secara reaktif
+  useEffect(() => {
+    localStorage.setItem("LOCAL_QUEUE_DATA", JSON.stringify(queueList));
+  }, [queueList]);
   
   // Custom Operator Loket State (6 Operator)
   const [operatorNames, setOperatorNames] = useState<string[]>(() => {
@@ -343,6 +379,11 @@ export default function App() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isUsingFallback, setIsUsingFallback] = useState<boolean>(true);
   const [testResult, setTestResult] = useState<string>("");
+
+  // State Local Registration (Form Offline)
+  const [localRegName, setLocalRegName] = useState<string>("");
+  const [localRegLayanan, setLocalRegLayanan] = useState<string>("Administrasi Kependudukan");
+  const [localRegAlamat, setLocalRegAlamat] = useState<string>("");
 
   // State TTS & Clock
   const [isAnnouncing, setIsAnnouncing] = useState<boolean>(false);
@@ -481,7 +522,7 @@ export default function App() {
         });
       }
 
-      mergeWithLocalMemory(parsedItems);
+      setQueueList(parsedItems);
       setIsUsingFallback(false);
 
       const now = new Date();
@@ -702,6 +743,135 @@ export default function App() {
     setQueueList(updated);
   };
 
+  // Impor Data dari Excel/CSV menggunakan SheetJS secara Offline
+  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        if (!bstr) throw new Error("Gagal membaca berkas.");
+        const wb = read(bstr, { type: "binary" });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rows = utils.sheet_to_json<any[]>(ws, { header: 1 });
+
+        if (rows.length === 0) {
+          alert("Gagal membaca file: File kosong atau baris tidak ditemukan.");
+          return;
+        }
+
+        const headers = rows[0].map((h: any) => String(h).toUpperCase().trim());
+
+        const idxNo = headers.indexOf("NO_ANTRIAN") !== -1 ? headers.indexOf("NO_ANTRIAN") : (headers.indexOf("NOMOR") !== -1 ? headers.indexOf("NOMOR") : 0);
+        const idxNama = headers.indexOf("NAMA_LENGKAP") !== -1 ? headers.indexOf("NAMA_LENGKAP") : (headers.indexOf("NAMA") !== -1 ? headers.indexOf("NAMA") : 1);
+        const idxAlamat = headers.indexOf("ALAMAT") !== -1 ? headers.indexOf("ALAMAT") : (headers.indexOf("DOMISILI") !== -1 ? headers.indexOf("DOMISILI") : 2);
+        const idxLayanan = headers.indexOf("JENIS_LAYANAN") !== -1 ? headers.indexOf("JENIS_LAYANAN") : (headers.indexOf("LAYANAN") !== -1 ? headers.indexOf("LAYANAN") : 3);
+        const idxStatus = headers.indexOf("STATUS") !== -1 ? headers.indexOf("STATUS") : (headers.indexOf("KETERANGAN") !== -1 ? headers.indexOf("KETERANGAN") : 5);
+        const idxLoket = headers.indexOf("LOKET") !== -1 ? headers.indexOf("LOKET") : 6;
+        const idxWaktu = headers.indexOf("WAKTU_DAFTAR") !== -1 ? headers.indexOf("WAKTU_DAFTAR") : (headers.indexOf("JAM") !== -1 ? headers.indexOf("JAM") : 7);
+
+        const parsedItems: QueueItem[] = [];
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || row.length === 0) continue;
+
+          const getVal = (idx: number) => {
+            const val = row[idx];
+            return val !== undefined && val !== null ? String(val).trim() : "";
+          };
+
+          const rawStatus = getVal(idxStatus).trim().toUpperCase();
+          let normalizedStatus: "wait" | "calling" | "called" | "done" | "skip" = "wait";
+          if (rawStatus === "MENUNGGU" || rawStatus === "WAIT" || !rawStatus) normalizedStatus = "wait";
+          else if (rawStatus === "DIPANGGIL" || rawStatus === "CALLING") normalizedStatus = "calling";
+          else if (rawStatus === "TELAH DIPANGGIL" || rawStatus === "CALLED") normalizedStatus = "called";
+          else if (rawStatus === "SELESAI" || rawStatus === "DONE") normalizedStatus = "done";
+          else if (rawStatus === "DILEWATI" || rawStatus === "SKIP" || rawStatus === "LEWAT") normalizedStatus = "skip";
+
+          parsedItems.push({
+            id: i,
+            no_antrian: getVal(idxNo) || `A${String(i).padStart(3, "0")}`,
+            nama: getVal(idxNama) || "Warga Tanpa Nama",
+            alamat: getVal(idxAlamat) || "Domisili Rahasia",
+            layanan: getVal(idxLayanan) || "Administrasi Umum",
+            status: normalizedStatus,
+            calledLoket: getVal(idxLoket) || undefined,
+            calledTime: getVal(idxWaktu) || undefined
+          });
+        }
+
+        if (parsedItems.length === 0) {
+          alert("Tidak ada data antrian valid berformat Excel yang ditemukan.");
+          return;
+        }
+
+        setQueueList(parsedItems);
+        localStorage.setItem("LOCAL_QUEUE_DATA", JSON.stringify(parsedItems));
+        alert(`Berhasil mengimpor ${parsedItems.length} antrian dari file Excel secara offline!`);
+      } catch (err: any) {
+        alert("Gagal mengurai file Excel: " + err.message);
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  // Daftarkan Antrian Warga Baru secara Lokal (Offline Mode)
+  const handleRegisterLocalQueue = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!localRegName.trim()) {
+      alert("Silakan isi nama warga terlebih dahulu!");
+      return;
+    }
+
+    // Tentukan Prefix berdasarkan Jenis Layanan
+    let prefix = "A";
+    if (localRegLayanan.includes("Sertifikat") || localRegLayanan.includes("Tanah")) {
+      prefix = "B";
+    } else if (localRegLayanan.includes("Kependudukan") || localRegLayanan.includes("KTP") || localRegLayanan.includes("KK")) {
+      prefix = "A";
+    } else if (localRegLayanan.includes("Keuangan") || localRegLayanan.includes("Bantuan") || localRegLayanan.includes("Dana")) {
+      prefix = "C";
+    } else {
+      prefix = "A";
+    }
+
+    // Cari antrian terakhir dengan kemiripan prefix agar berurutan
+    const siblings = queueList.filter((item) => item.no_antrian.startsWith(prefix));
+    let nextSeq = 1;
+    if (siblings.length > 0) {
+      const seqNums = siblings.map((item) => {
+        const numText = item.no_antrian.substring(1);
+        const parsedVal = parseInt(numText, 10);
+        return isNaN(parsedVal) ? 0 : parsedVal;
+      });
+      nextSeq = Math.max(...seqNums) + 1;
+    }
+
+    const outputNoAntrian = `${prefix}${String(nextSeq).padStart(3, "0")}`;
+    const outputId = queueList.length > 0 ? Math.max(...queueList.map((q) => q.id)) + 1 : 1;
+
+    const newLocalItem: QueueItem = {
+      id: outputId,
+      no_antrian: outputNoAntrian,
+      nama: localRegName.trim(),
+      alamat: localRegAlamat.trim() || "Pemerintah Desa Poncol",
+      layanan: localRegLayanan,
+      status: "wait"
+    };
+
+    const updatedList = [...queueList, newLocalItem];
+    setQueueList(updatedList);
+    localStorage.setItem("LOCAL_QUEUE_DATA", JSON.stringify(updatedList));
+
+    // Bersihkan formulir kembali kosong
+    setLocalRegName("");
+    setLocalRegAlamat("");
+    alert(`Sukses menambahkan antrian ${outputNoAntrian} untuk warga: "${localRegName.trim()}"!`);
+  };
+
   // Tes Pengeras Suara Manual
   const handleTestTtsSound = () => {
     if (!window.speechSynthesis) return;
@@ -739,9 +909,13 @@ export default function App() {
             <div>
               <h1 className="text-lg md:text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
                 {instansiName}
-                {isUsingFallback && (
-                  <span className="text-[10px] bg-amber-150 text-amber-800 border border-amber-200/50 rounded-full px-2 py-0.5 font-bold uppercase tracking-wide">
-                    Mode Fallback Offline (Demo)
+                {isUsingFallback ? (
+                  <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200/50 rounded-full px-2.5 py-0.5 font-extrabold uppercase tracking-wide">
+                    Fallback Cloud Demo
+                  </span>
+                ) : (
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200/50 rounded-full px-2.5 py-0.5 font-extrabold uppercase tracking-wide flex items-center gap-1">
+                    📡 Cloud Terkoneksi
                   </span>
                 )}
               </h1>
@@ -813,99 +987,144 @@ export default function App() {
         {activeTab === "operator" && (
           <div className="space-y-6">
             
-            {/* KARTU KONEKTIVITAS SPREADSHEET (SANGAT SEDERHANA) */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-teal-50">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2.5 rounded-2xl text-white ${isUsingFallback ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`}>
-                    <Database className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Koneksi Lembar Spreadsheet</h3>
-                    <p className="text-[11px] text-slate-500">
-                      {isUsingFallback 
-                        ? `Mode Fallback Offline (Demo) — Menampilkan data tiruan. Masukkan API Key & ID untuk menyambung data cloud.` 
-                        : `Berhasil Terkoneksi dengan Cloud Google Sheet! Membaca Tab: "${customSheetName}"`}
-                    </p>
-                  </div>
+            {/* KARTU ENGINE KONEKSI GOOGLE SPREADSHEETS TUNGGAL */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-1.5">
+                    <Wifi className="w-4.5 h-4.5 text-[#534AB7]" />
+                    Hubungan Google Spreadsheet Langsung
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Sistem disinkronkan secara real-time langsung ke Google Sheets tanpa perantara database offline berkas lokal.
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowSettings(!showSettings)}
-                    className="px-4 py-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    className="px-3.5 py-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
                   >
                     <Settings className="w-3.5 h-3.5 text-[#534AB7]" />
-                    {showSettings ? "Sembunyikan Pengaturan" : "Ubah Spreadsheet ID / API Key"}
+                    {showSettings ? "Sembunyikan Pengaturan" : "⚙️ Pengaturan Parameter"}
                   </button>
                   <button
                     onClick={fetchDataFromSheets}
                     disabled={isFetching}
-                    className="px-4 py-2 bg-[#534AB7] hover:bg-[#433b9b] disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
+                    className="px-3.5 py-2 bg-[#534AB7] hover:bg-[#433b9b] disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 animate-fadeIn"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
-                    {isFetching ? "Sinkron..." : "Segarkan Data"}
+                    {isFetching ? "Sinkron..." : "Segarkan Data Cloud"}
                   </button>
                 </div>
               </div>
 
-              {/* TAMPILAN ERROR KONEKSI */}
+              {/* STATUS INDIKATOR SINKRONISASI */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 rounded-lg text-[#534AB7]">
+                    <Database className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] block text-slate-400 font-extrabold uppercase tracking-wide">ID SPREADSHEET</span>
+                    <span className="text-[11px] font-mono font-bold text-slate-700 truncate block max-w-[180px]">
+                      {customSpreadsheetId}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 rounded-lg text-[#534AB7]">
+                    <FileText className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] block text-slate-400 font-extrabold uppercase tracking-wide">NAMA SHEET TAB</span>
+                    <span className="text-[11px] font-mono font-bold text-slate-700 block">
+                      {customSheetName}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 rounded-lg text-[#534AB7]">
+                    <Wifi className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] block text-slate-400 font-extrabold uppercase tracking-wide">METODE TRANSMISI</span>
+                    {isUsingFallback ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-600">
+                        ⚠️ Fallback Demo Data
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-600">
+                        ● Google Sheets Terhubung
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* RENDER DIAGNOSTIK KONEKSI JIKA ERROR */}
               {renderConnectionErrorCard(fetchError)}
 
-              {/* CONFIG COLLAPSIBLE FORM */}
+              {/* CONFIG COLLAPSIBLE FORM (DI-SHARE BERDASARKAN PARAMETER SPREADSHEET DAN OPERATOR LOKET) */}
               {showSettings && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-150 animate-fadeIn text-xs">
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1 tracking-wider">GOOGLE SPREADSHEET ID</label>
-                    <input
-                      type="text"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      value={customSpreadsheetId}
-                      placeholder="Masukkan Spreadsheet ID..."
-                      onChange={(e) => {
-                        setCustomSpreadsheetId(e.target.value);
-                        localStorage.setItem("VITE_SPREADSHEET_ID", e.target.value);
-                      }}
-                    />
-                  </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 animate-fadeIn space-y-4 text-xs">
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1 tracking-wider">GOOGLE SPREADSHEET ID</label>
+                      <input
+                        type="text"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        value={customSpreadsheetId}
+                        placeholder="Masukkan Spreadsheet ID..."
+                        onChange={(e) => {
+                          setCustomSpreadsheetId(e.target.value);
+                          localStorage.setItem("VITE_SPREADSHEET_ID", e.target.value);
+                        }}
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1 tracking-wider">NAMA TAB SHEET (KATEGORI)</label>
-                    <input
-                      type="text"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      value={customSheetName}
-                      placeholder="Contoh: ANTRIAN atau Sheet1..."
-                      onChange={(e) => {
-                        setCustomSheetName(e.target.value);
-                        localStorage.setItem("VITE_SHEET_NAME", e.target.value);
-                      }}
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1 tracking-wider">NAMA TAB SHEET (KATEGORI)</label>
+                      <input
+                        type="text"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        value={customSheetName}
+                        placeholder="Contoh: ANTRIAN atau Sheet1..."
+                        onChange={(e) => {
+                          setCustomSheetName(e.target.value);
+                          localStorage.setItem("VITE_SHEET_NAME", e.target.value);
+                        }}
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1 tracking-wider">GOOGLE SHEETS API KEY (REST v4)</label>
-                    <input
-                      type="password"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      value={customApiKey.includes("GANTI_DENGAN") ? "" : customApiKey}
-                      placeholder="Masukkan Google API Key valid Anda..."
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setCustomApiKey(val);
-                        localStorage.setItem("VITE_GOOGLE_SHEETS_API_KEY", val);
-                      }}
-                    />
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1 tracking-wider">GOOGLE SHEETS API KEY (v4)</label>
+                      <input
+                        type="password"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        value={customApiKey.includes("GANTI_DENGAN") ? "" : customApiKey}
+                        placeholder="Masukkan Google API Key valid Anda..."
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomApiKey(val);
+                          localStorage.setItem("VITE_GOOGLE_SHEETS_API_KEY", val);
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {/* SEKSI GOLONGAN NAMA OPERATOR LOKET (6 OPERATOR) */}
-                  <div className="md:col-span-3 border-t border-slate-200/60 pt-3 mt-1">
+                  <div className="border-t border-slate-200/60 pt-3">
                     <p className="font-extrabold text-[#534AB7] mb-1.5 uppercase tracking-wide flex items-center gap-1.5">
                       <span>👤</span> NAMA OPERATOR LOKET (6 OPERATOR AKTIF)
                     </p>
                     <p className="text-[11px] text-slate-400 mb-3.5 leading-relaxed">
                       Silakan sesuaikan nama operator atau nama bagian pelayanan untuk masing-masing loket. Perubahan ini otomatis mengubah drop-down pemanggil dan monitor antrian.
                     </p>
+                    
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {operatorNames.map((opName, idx) => (
                         <div key={idx} className="space-y-1">
@@ -922,7 +1141,6 @@ export default function App() {
                               setOperatorNames(newOps);
                               localStorage.setItem("VITE_OPERATOR_NAMES", JSON.stringify(newOps));
                               
-                              // Sinkronisasi string currentLoket jika saat ini operator sedang aktif memilih loket ini
                               if (currentLoket.startsWith(`Loket ${idx + 1} `) || currentLoket === `Loket ${idx + 1} (${operatorNames[idx]})`) {
                                 setCurrentLoket(`Loket ${idx + 1} (${e.target.value})`);
                               }
@@ -933,8 +1151,9 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="md:col-span-3 flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-200/60 mt-1">
-                    <span>💡 <i>Sistem menyimpan kustomisasi nama operator secara langsung di browser lokal Anda.</i></span>
+                  {/* RESET BUTTONS & FOOTER */}
+                  <div className="flex flex-col sm:flex-row justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-200/60 gap-3">
+                    <span>💡 <i>Kustomisasi nama operator disimpan mandiri di memori browser Anda.</i></span>
                     <button
                       onClick={() => {
                         setCustomSpreadsheetId(RESOLVED_SPREADSHEET_ID);
